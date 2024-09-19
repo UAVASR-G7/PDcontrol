@@ -13,6 +13,7 @@ PD34 = 13
 
 # Initialize ROS node
 rospy.init_node('servo_controller')
+rospy.loginfo("starting pd_control node...")
 
 # Function to set servo position
 def set_servo_position(pin, angle):
@@ -92,18 +93,22 @@ def fullreset(_):
     return EmptyResponse()
 
 def deployPD1(_):
+    rospy.loginfo("deploying payload 1")
     set_servo_position(PD1, deploy_angles[PD1])
     return EmptyResponse()
 
 def deployPD2(_):
+    rospy.loginfo("deploying payload 2")
     set_servo_position(PD2, deploy_angles[PD2])
     return EmptyResponse()
 
 def deployPD3(_):
+    rospy.loginfo("deploying payload 3")
     set_servo_position(PD34, deploy_angles[PD34])
     return EmptyResponse()
 
 def deployPD4(_):
+    rospy.loginfo("deploying payload 4")
     set_servo_position(PD34, deploy_angles[PD34])
     return EmptyResponse()
 
@@ -111,13 +116,13 @@ def deployPD4(_):
 read_servo_values()
 
 # ROS service servers
-rospy.Service('servo_setup', Empty, servo_setup)
-rospy.Service('zero_servos', Empty, zero_servos)
-rospy.Service('fullreset', Empty, fullreset)
-rospy.Service('deployPD1', Empty, deployPD1)
-rospy.Service('deployPD2', Empty, deployPD2)
-rospy.Service('deployPD3', Empty, deployPD3)
-rospy.Service('deployPD4', Empty, deployPD4)
+rospy.Service('payload/servo_setup', Empty, servo_setup)
+rospy.Service('payload/zero_servos', Empty, zero_servos)
+rospy.Service('payload/fullreset', Empty, fullreset)
+rospy.Service('payload/deployPD1', Empty, deployPD1)
+rospy.Service('payload/deployPD2', Empty, deployPD2)
+rospy.Service('payload/deployPD3', Empty, deployPD3)
+rospy.Service('payload/deployPD4', Empty, deployPD4)
 
 # Keep the node running
 rospy.spin()
