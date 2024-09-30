@@ -106,14 +106,18 @@ def fullreset(_):
     return EmptyResponse()
 
 def deployPD1():
+    rospy.loginfo("PD1 COMMAND REVEIVED")
+    rospy.sleep(rospy.Duration(10))
     set_servo_position(PD1, 90)
     print_servo_states()
-    rospy.loginfo("PD1 COMMAND REVEIVED")
+    
 
 def deployPD2():
+    rospy.loginfo("PD2 COMMAND REVEIVED")
+    rospy.sleep(rospy.Duration(10))
     set_servo_position(PD2, 90)
     print_servo_states()
-    rospy.loginfo("PD2 COMMAND REVEIVED")
+    
 
 def deployPD3():
     set_servo_position(PD34, deploy_angles[PD34])
