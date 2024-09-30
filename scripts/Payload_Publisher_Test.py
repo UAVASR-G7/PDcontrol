@@ -27,7 +27,7 @@ def simulated_publisher():
             rospy.loginfo(f"Published target: {target}")
             
             # Wait for 2 seconds before sending the next target
-            time.sleep(2)
+            time.sleep(10)
 
 if __name__ == '__main__':
     try:

@@ -10,13 +10,17 @@ if not pi.connected:
     exit(1)
 
 # Define GPIO pins for the servos
-PD1 = 27
-PD2 = 22
-PD34 = 17
+PD1 = 27 # person
+PD2 = 22 # backpack
+PD34 = 17 #  drone & phone
 
 # Initialize ROS node
 rospy.init_node('servo_controller')
 rospy.loginfo("Servo controller started")
+
+# Time to re-zero servo positions
+global zero_delay 
+zero_delay = 5 # [sec]
 
 # Function to set servo position
 def set_servo_position(pin, angle):
@@ -47,22 +51,22 @@ def deploy_callback(msg):
     if msg.target_label == 'person':
         set_servo_position(PD1, deploy_angles[PD1])
         rospy.loginfo(f"PD1 (person) deployed to {deploy_angles[PD1]} degrees")
-        Timer(10, zero_servo_position, [PD1]).start()  # Zero after 10 seconds
+        Timer(zero_delay, zero_servo_position, [PD1]).start()  # Zero after 10 seconds
         
     elif msg.target_label == 'backpack':
         set_servo_position(PD2, deploy_angles[PD2])
         rospy.loginfo(f"PD2 (backpack) deployed to {deploy_angles[PD2]} degrees")
-        Timer(10, zero_servo_position, [PD2]).start()  # Zero after 10 seconds
+        Timer(zero_delay, zero_servo_position, [PD2]).start()  # Zero after 10 seconds
         
     elif msg.target_label == 'drone':
         set_servo_position(PD34, deploy_angles[PD34])
         rospy.loginfo(f"PD34 (drone) deployed to {deploy_angles[PD34]} degrees")
-        Timer(10, zero_servo_position, [PD34]).start()  # Zero after 10 seconds
+        Timer(zero_delay, zero_servo_position, [PD34]).start()  # Zero after 10 seconds
         
     elif msg.target_label == 'phone':
         set_servo_position(PD34, deploy_angles[PD34])
         rospy.loginfo(f"PD34 (phone) deployed to {deploy_angles[PD34]} degrees")
-        Timer(10, zero_servo_position, [PD34]).start()  # Zero after 10 seconds
+        Timer(zero_delay, zero_servo_position, [PD34]).start()  # Zero after 10 seconds
 
 # ROS topic subscriber for target detection
 rospy.Subscriber('target_detection/localisation', TargetLocalisation, deploy_callback)
