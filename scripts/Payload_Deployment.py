@@ -11,8 +11,8 @@ if not pi.connected:
 
 # Define GPIO pins for the servos
 PD1 = 27  # person
-PD2 = 22  # backpack
-PD34 = 17  # drone and phone use the same pin
+PD2 = 17  # backpack
+PD34 = 22  # drone and phone use the same pin
 
 # Initialize ROS node
 rospy.init_node('servo_controller')
@@ -46,7 +46,7 @@ def zero_servo_position(pin, zero_angle):
 deploy_angles = {PD1: 90, PD2: 90, 'drone': 170, 'phone': 10}
 
 # Zero positions for each servo
-zero_angles = {PD1: 0, PD2: 0, PD34: 90}
+zero_angles = {PD1: 90, PD2: 90, PD34: 90}
 
 # Function to initialize servos to zero position (45 degrees for PD34)
 def initialize_servos():

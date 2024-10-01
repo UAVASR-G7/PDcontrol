@@ -9,9 +9,9 @@ import os
 pi = pigpio.pi()
 
 # Define GPIO pins for the servos
-PD1 = 27
-PD2 = 22
-PD34 = 17
+PD1 = 17
+PD2 = 27
+PD34 = 22
 
 # Initialize ROS node
 rospy.init_node('servo_controller')
@@ -86,9 +86,9 @@ def servo_setup(_):
 
 def zero_servos(_):
     global last_angles
-    set_servo_position(PD34, last_angles[PD34])
-    set_servo_position(PD1, last_angles[PD1])
-    set_servo_position(PD2, last_angles[PD2])
+    set_servo_position(PD1, 90)
+    set_servo_position(PD2, 90)
+    set_servo_position(PD34, 130)
     print_servo_states()
     return EmptyResponse()
 
@@ -107,29 +107,29 @@ def fullreset(_):
 
 def deployPD1():
     rospy.loginfo("PD1 COMMAND REVEIVED")
-    rospy.sleep(rospy.Duration(10))
-    set_servo_position(PD1, 90)
+    # rospy.sleep(rospy.Duration(10))
+    set_servo_position(PD1, 180)
     print_servo_states()
     
 
 def deployPD2():
     rospy.loginfo("PD2 COMMAND REVEIVED")
-    rospy.sleep(rospy.Duration(10))
-    set_servo_position(PD2, 90)
+    # rospy.sleep(rospy.Duration(10))
+    set_servo_position(PD2, 30)
     print_servo_states()
     
 
 def deployPD3():
-    set_servo_position(PD34, deploy_angles[PD34])
+    set_servo_position(PD34, 30)
     print_servo_states()
 
 def deployPD4():
-    set_servo_position(PD34, deploy_angles[PD34])
+    set_servo_position(PD34, 130)
     print_servo_states()
     
 def moveall(_):
-    set_servo_position(PD1, 90)
-    set_servo_position(PD2, 90)
+    set_servo_position(PD1, 45)
+    set_servo_position(PD2, 45)
     set_servo_position(PD34, 90)
     rospy.loginfo("All servos moved to 90 degrees")
     print_servo_states()
@@ -143,6 +143,10 @@ rospy.Service('servo_setup', Empty, servo_setup)
 rospy.Service('zero_servos', Empty, zero_servos)
 rospy.Service('fullreset', Empty, fullreset)
 rospy.Service('moveall', Empty, moveall)
+#rospy.Service('pd1', Empty, deployPD1)
+#rospy.Service('pd2', Empty, deployPD2)
+#rospy.Service('pd3', Empty, deployPD3)
+#rospy.Service('pd4', Empty, deployPD4)
 
 # ROS topic subscriber callback
 def deploy_callback(msg):
@@ -150,13 +154,13 @@ def deploy_callback(msg):
     if msg.target_label == 'person':
         deployPD1()
         rospy.loginfo(f"deployed person package")
-    elif msg.target_label == 'backpack':
-        deployPD2()
-        rospy.loginfo(f"deployed backpack package")
-    elif msg.target_label == 'drone':
-        deployPD3()
-    elif msg.target_label == 'phone':
-        deployPD4()
+    # elif msg.target_label == 'backpack':
+        # deployPD2()
+        # rospy.loginfo(f"deployed backpack package")
+    # elif msg.target_label == 'drone':
+    #     # deployPD3()
+    # elif msg.target_label == 'phone':
+        # deployPD4()
 
 # ROS topic subscriber
 #rospy.Subscriber('payload/target', String, deploy_callback)
