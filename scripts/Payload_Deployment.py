@@ -23,8 +23,11 @@ rospy.loginfo("Servo controller started")
 global zero_delay
 zero_delay = 5  # [sec]
 
-# Initialize roi_status_flag 
+# Initialize roi_status_flag (this variable is used to check that the /roi_status_callback topic is in fact True, for the payload dropping)
 roi_status_flag = False
+
+# Initialise TargetID variable (stores the target ID as a global variable to pass between callbacks)
+TargetID = "Unset_ID"
 
 # Function to set servo position (0 to 180 deg)
 def set_servo_position(pin, angle):
@@ -47,7 +50,7 @@ def zero_servo_position(pin, zero_angle):
     Timer(0.25, stop_servo, [pin]).start()  # Stop the servo after 0.25 seconds
 
 # Dictionary to store deployment angles
-deploy_angles = {PD1: 90, PD2: 90, 'drone': 170, 'phone': 10}
+deploy_angles = {PD1: 60, PD2: 120, 'drone': 160, 'phone': 20}
 
 # Zero positions for each servo
 zero_angles = {PD1: 90, PD2: 90, PD34: 90}
@@ -61,46 +64,49 @@ def initialize_servos():
     rospy.sleep(rospy.Duration(2))
     rospy.loginfo("Payload Deployment Active...")
 
-# Triggered when roi is reached, ANL, sets flag to True to mark ready to drop payload
-def roi_status_callback(data):
-    global roi_status_flag
-    roi_status_flag = data.data  # Assuming the flag is a Bool message
+# Store the TargetID as a global variable (to reference in roi_status_callback)
+def TargetID_callback(msg_in):
+    global TargetID
+    TargetID = msg_in.target_label
 
-# Function to deploy payload based on the detected target
-def deploy_callback(msg):
-    global roi_status_flag
-    rospy.loginfo(f"deploy_callback triggered, target is : {msg.target_label}")
-    rospy.loginfo(f"roi_status_flag @ time of recieving deploy_callback(msg) is : {roi_status_flag}")
-    
-    if msg.target_label == 'person' and roi_status_flag:
-        set_servo_position(PD1, deploy_angles[PD1])
-        rospy.loginfo(f"PD1 (person) deployed to {deploy_angles[PD1]} degrees")
-        Timer(zero_delay, zero_servo_position, [PD1, zero_angles[PD1]]).start()  # Return to 0 degrees after the delay
-        roi_status_flag = False
+# roi status callback (This deploys the payload when the roi status flag is set to true, see demo_wp_roi)
+# This determines which payload to drop depending on the TargetID global variable, which is set in TargetID_callback() function
+def roi_status_callback(msg):
+    global TargetID
 
-    elif msg.target_label == 'backpack' and roi_status_flag:
-        set_servo_position(PD2, deploy_angles[PD2])
-        rospy.loginfo(f"PD2 (backpack) deployed to {deploy_angles[PD2]} degrees")
-        Timer(zero_delay, zero_servo_position, [PD2, zero_angles[PD2]]).start()  # Return to 0 degrees after the delay
-        roi_status_flag = False
-
-    elif msg.target_label == 'drone':
-        set_servo_position(PD34, deploy_angles['drone'])
-        rospy.loginfo(f"PD34 (drone) deployed to {deploy_angles['drone']} degrees")
-        Timer(zero_delay, zero_servo_position, [PD34, zero_angles[PD34]]).start()  # Return to 45 degrees after the delay
-        roi_status_flag = False
+    if msg.data:  # only initiate this section on a recieved True
+        rospy.loginfo(f"ROI Status Callback Triggered for Target: {TargetID}")
         
-    elif msg.target_label == 'phone':
-        set_servo_position(PD34, deploy_angles['phone'])
-        rospy.loginfo(f"PD34 (phone) deployed to {deploy_angles['phone']} degrees")
-        Timer(zero_delay, zero_servo_position, [PD34, zero_angles[PD34]]).start()  # Return to 45 degrees after the delay
-        roi_status_flag = False
+        # Perform the payload deployment based on the TargetID
+        if TargetID == 'person':
+            set_servo_position(PD1, deploy_angles[PD1])
+            rospy.loginfo(f"PD1 (person) deployed to {deploy_angles[PD1]} degrees")
+            Timer(zero_delay, zero_servo_position, [PD1, zero_angles[PD1]]).start()
+
+        elif TargetID == 'backpack':
+            set_servo_position(PD2, deploy_angles[PD2])
+            rospy.loginfo(f"PD2 (backpack) deployed to {deploy_angles[PD2]} degrees")
+            Timer(zero_delay, zero_servo_position, [PD2, zero_angles[PD2]]).start()
+
+        elif TargetID == 'drone':
+            set_servo_position(PD34, deploy_angles['drone'])
+            rospy.loginfo(f"PD34 (drone) deployed to {deploy_angles['drone']} degrees")
+            Timer(zero_delay, zero_servo_position, [PD34, zero_angles[PD34]]).start()
+        
+        elif TargetID == 'phone':
+            set_servo_position(PD34, deploy_angles['phone'])
+            rospy.loginfo(f"PD34 (phone) deployed to {deploy_angles['phone']} degrees")
+            Timer(zero_delay, zero_servo_position, [PD34, zero_angles[PD34]]).start()
+
+        # Reset TargetID after deployment for debugging
+        TargetID = "Unset_ID"
+
 
 # Call the initialization function before the callbacks start
 initialize_servos()
 
 # ROS topic subscriber for target detection
-rospy.Subscriber('target_detection/localisation', TargetLocalisation, deploy_callback)
+rospy.Subscriber('target_detection/localisation', TargetLocalisation, TargetID_callback)
 
 # rostopic subscriber for roi target status
 rospy.Subscriber('/roi_status_flag', Bool, roi_status_callback)
