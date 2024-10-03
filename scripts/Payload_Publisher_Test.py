@@ -44,7 +44,7 @@ def simulated_publisher():
             pub_roi_flag.publish(Bool(data=False))
             
             # Wait before the next cycle
-            rospy.sleep(5)  # Wait for a short period before publishing the next target
+            rospy.sleep(10)  # Wait for a short period before publishing the next target
 
 if __name__ == '__main__':
     try:

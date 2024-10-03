@@ -1,181 +1,146 @@
 import pigpio
 import rospy
-from std_srvs.srv import Empty, EmptyResponse
-from std_msgs.msg import String
 from spar_msgs.msg import TargetLocalisation
-import os
+from std_srvs.srv import Empty, EmptyResponse
+from std_msgs.msg import Bool  # Ensure this is imported for roi_status_flag
+from threading import Timer
 
-def start():
-    # Initialize pigpio
-    pi = pigpio.pi()
+# Initialize pigpio
+pi = pigpio.pi()
+if not pi.connected:
+    rospy.logerr("Failed to connect to pigpio daemon!")
+    rospy.signal_shutdown("Failed to connect to pigpio daemon!")  # Graceful shutdown
 
-    # Define GPIO pins for the servos
-    PD1 = 17
-    PD2 = 27
-    PD34 = 22
+# Define GPIO pins for the servos
+PD1 = 17  # person
+PD2 = 27  # backpack
+PD34 = 22  # drone and phone use the same pin
 
-    # Initialize ROS node
-    rospy.init_node('servo_controller')
-    rospy.loginfo("started")
+# Initialize ROS node
+rospy.init_node('servo_controller')
+rospy.loginfo("Servo controller started")
 
-    # Function to set servo position
-    def set_servo_position(pin, angle):
-        pulse_width = 500 + (angle * 2000 / 180)
-        pi.set_servo_pulsewidth(pin, pulse_width)
+# Time to re-zero servo positions
+global zero_delay
+zero_delay = 5  # [sec]
 
-    # Dictionary to store the last angles and deployment angles
-    last_angles = {PD1: 0, PD2: 0, PD34: 0}
-    deploy_angles = {PD1: 0, PD2: 0, PD34: 0}
+# Initialize roi_status_flag (this variable is used to check that the /roi_status_callback topic is in fact True, for the payload dropping)
+roi_status_flag = False
 
-    # Function to read servo values from file
-    def read_servo_values():
-        global last_angles, deploy_angles
-        if os.path.exists('servo_values.txt'):
-            with open('servo_values.txt', 'r') as file:
-                lines = file.readlines()
-                for line in lines:
-                    pin, last_angle, deploy_angle = map(float, line.strip().split(','))
-                    last_angles[int(pin)] = last_angle
-                    deploy_angles[int(pin)] = deploy_angle
+# Initialise TargetID variable (stores the target ID as a global variable to pass between callbacks)
+TargetID = "Unset_ID"
 
-    # Function to write servo values to file
-    def write_servo_values():
-        with open('servo_values.txt', 'w') as file:
-            for pin in last_angles:
-                file.write(f"{pin},{last_angles[pin]},{deploy_angles[pin]}\n")
+# Initialize target_label as a global variable
+target_label = "Unset_Label"
 
-    # Function to get user input for servo angles
-    def get_servo_angle(pin):
-        while True:
-            try:
-                angle = float(input(f"Enter initial angle for servo on pin {pin} (or type 'next' to move to the next servo): "))
-                set_servo_position(pin, angle)
-                last_angles[pin] = angle
-            except ValueError:
-                command = input("Type 'next' to move to the next servo or 'exit' to finish: ").strip().lower()
-                if command == 'next':
-                    break
-                elif command == 'exit':
-                    return 'exit'
-        
-        while True:
-            try:
-                angle = float(input(f"Enter deployment angle for servo on pin {pin} (or type 'next' to move to the next servo): "))
-                set_servo_position(pin, angle)
-                deploy_angles[pin] = angle
-            except ValueError:
-                command = input("Type 'next' to move to the next servo or 'exit' to finish: ").strip().lower()
-                if command == 'next':
-                    break
-                elif command == 'exit':
-                    return 'exit'
-
-    # Function to print servo states
-    def print_servo_states():
-        rospy.loginfo(f"Servo States - PD1: {last_angles[PD1]} (Initial), {deploy_angles[PD1]} (Deployment), PD2: {last_angles[PD2]} (Initial), {deploy_angles[PD2]} (Deployment), PD34: {last_angles[PD34]} (Initial), {deploy_angles[PD34]} (Deployment)")
-
-    # Payload deployment functions
-    def servo_setup(_):
-        if get_servo_angle(PD1) == 'exit':
-            return
-        if get_servo_angle(PD2) == 'exit':
-            return
-        get_servo_angle(PD34)
-        write_servo_values()
-        print_servo_states()
-        return EmptyResponse()
-
-    def zero_servos(_):
-        global last_angles
-        set_servo_position(PD1, 90)
-        set_servo_position(PD2, 90)
-        set_servo_position(PD34, 130)
-        print_servo_states()
-        return EmptyResponse()
-
-    def fullreset(_):
-        global last_angles, deploy_angles
-        last_angles = {PD1: 0, PD2: 0, PD34: 0}
-        deploy_angles = {PD1: 0, PD2: 0, PD34: 0}
-        set_servo_position(PD34, 0)
-        set_servo_position(PD1, 0)
-        set_servo_position(PD2, 0)
-        # Wipe the servo_values.txt file
-        if os.path.exists('servo_values.txt'):
-            os.remove('servo_values.txt')
-        print_servo_states()
-        return EmptyResponse()
-
-    def deployPD1():
-        rospy.loginfo("PD1 COMMAND REVEIVED")
-        # rospy.sleep(rospy.Duration(10))
-        set_servo_position(PD1, 30)
-        print_servo_states()
-        
-
-    def deployPD2():
-        rospy.loginfo("PD2 COMMAND REVEIVED")
-        # rospy.sleep(rospy.Duration(10))
-        set_servo_position(PD2, 30)
-        print_servo_states()
-        
-
-    def deployPD3():
-        set_servo_position(PD34, 30)
-        print_servo_states()
-
-    def deployPD4():
-        set_servo_position(PD34, 130)
-        print_servo_states()
-        
-    def moveall(_):
-        set_servo_position(PD1, 45)
-        set_servo_position(PD2, 45)
-        set_servo_position(PD34, 90)
-        rospy.loginfo("All servos moved to 90 degrees")
-        print_servo_states()
-
-
-    # Read servo values from file at startup
-    read_servo_values()
-
-    # ROS service servers
-    rospy.Service('servo_setup', Empty, servo_setup)
-    rospy.Service('zero_servos', Empty, zero_servos)
-    rospy.Service('fullreset', Empty, fullreset)
-    rospy.Service('moveall', Empty, moveall)
-    #rospy.Service('pd1', Empty, deployPD1)
-    #rospy.Service('pd2', Empty, deployPD2)
-    #rospy.Service('pd3', Empty, deployPD3)
-    #rospy.Service('pd4', Empty, deployPD4)
-
-    # ROS topic subscriber callback
-    def deploy_callback(msg):
-        rospy.loginfo(f"Target is: {msg.target_label}")
-        if msg.target_label == "person":
-            deployPD1()
-            rospy.loginfo(f"deployed person package")
-        elif msg.target_label == 'backpack':
-            deployPD2()
-            rospy.loginfo(f"deployed backpack package")
-        elif msg.target_label == 'drone':
-            deployPD3()
-        elif msg.target_label == 'phone':
-            deployPD4()
-
-    # ROS topic subscriber
-    #rospy.Subscriber('payload/target', String, deploy_callback)
-    rospy.Subscriber('target_detection/localisation', TargetLocalisation, deploy_callback)
-
-    # Keep the node running
-    # rospy.spin()
-
-    # Cleanup
-    # pi.stop()
-
-if __name__ == '__main__':
+# Function to set servo position (0 to 180 deg)
+def set_servo_position(pin, angle):
     try:
-        start()
-        rospy.spin()
-    except rospy.ROSInterruptException:
-        pass
+        pulse_width = 500 + (angle * 2000 / 180)  # Convert angle to pulse width
+        pi.set_servo_pulsewidth(pin, pulse_width)
+        rospy.loginfo(f"Servo on pin {pin} set to {angle} degrees (pulse width: {pulse_width} µs)")
+    except Exception as e:
+        rospy.logerr(f"Failed to set servo position on pin {pin}: {str(e)}")
+
+# Function to stop the servo signal (zero the pulse width)
+def stop_servo(pin):
+    rospy.loginfo(f"Stopping servo on pin {pin}")
+    pi.set_servo_pulsewidth(pin, 0)  # Set pulse width to 0 to stop the servo
+
+# Function to zero the servo position and stop the servo
+def zero_servo_position(pin, zero_angle):
+    rospy.loginfo(f"Zeroing servo on pin {pin} to {zero_angle} degrees")
+    set_servo_position(pin, zero_angle)  # Set servo back to the specified zero angle
+    Timer(0.25, stop_servo, [pin]).start()  # Stop the servo after 0.25 seconds
+
+# Dictionary to store deployment angles
+deploy_angles = {PD1: 90 - 50, PD2: 90 + 60, 'drone': 90 + 20, 'phonea': 90 - 40}
+
+# Zero positions for each servo
+zero_angles = {PD1: 90, PD2: 90, PD34: 90}
+
+# Function to initialize servos to zero position (45 degrees for PD34)
+def initialize_servos():
+    rospy.loginfo("Initializing servos to their zero positions...")
+    zero_servo_position(PD1, zero_angles[PD1])
+    zero_servo_position(PD2, zero_angles[PD2])
+    zero_servo_position(PD34, zero_angles[PD34])  # Initialize PD34 (drone/phone) to 45 degrees
+    rospy.sleep(rospy.Duration(2))
+    rospy.loginfo("Payload Deployment Active...")
+
+# Store the TargetID as a global variable (to reference in roi_status_callback)
+def TargetID_callback(msg_in):
+    global TargetID, target_label
+    TargetID = msg_in.target_label
+    target_label = msg_in.target_label
+
+# roi status callback (This deploys the payload when the roi status flag is set to true, see demo_wp_roi)
+# This determines which payload to drop depending on the TargetID global variable, which is set in TargetID_callback() function
+def roi_status_callback(msg):
+    global TargetID, target_label
+
+    if msg.data:  # only initiate this section on a received True
+        rospy.loginfo(f"ROI Status Callback Triggered for Target: {target_label}")
+        
+        # Perform the payload deployment based on the target_label
+        if target_label == 'person':
+            set_servo_position(PD1, deploy_angles[PD1])
+            rospy.loginfo(f"PD1 (person) deployed to {deploy_angles[PD1]} degrees")
+            Timer(zero_delay, zero_servo_position, [PD1, zero_angles[PD1]]).start()
+
+        elif target_label == 'backpack':
+            set_servo_position(PD2, deploy_angles[PD2])
+            rospy.loginfo(f"PD2 (backpack) deployed to {deploy_angles[PD2]} degrees")
+            Timer(zero_delay, zero_servo_position, [PD2, zero_angles[PD2]]).start()
+
+        elif target_label == 'drone':
+            set_servo_position(PD34, deploy_angles['drone'])
+            rospy.loginfo(f"PD34 (drone) deployed to {deploy_angles['drone']} degrees")
+            Timer(zero_delay, zero_servo_position, [PD34, zero_angles[PD34]]).start()
+        
+        elif target_label == 'phone':
+            set_servo_position(PD34, deploy_angles['phone'])
+            rospy.loginfo(f"PD34 (phone) deployed to {deploy_angles['phone']} degrees")
+            Timer(zero_delay, zero_servo_position, [PD34, zero_angles[PD34]]).start()
+
+        # Reset TargetID after deployment for debugging
+        TargetID = "Unset_ID"
+        target_label = "Unset_Label"
+
+# ROS service callback for initializing servos
+def initialize_servos_service(req):
+    initialize_servos()
+    return EmptyResponse()
+
+# ROS service callback for zeroing servos
+def zero_servos_service(req):
+    zero_servo_position(PD1, zero_angles[PD1])
+    zero_servo_position(PD2, zero_angles[PD2])
+    zero_servo_position(PD34, zero_angles[PD34])
+    return EmptyResponse()
+
+# Call the initialization function before the callbacks start
+initialize_servos()
+
+# ROS topic subscriber for target detection
+rospy.Subscriber('target_detection/localisation', TargetLocalisation, TargetID_callback)
+
+# rostopic subscriber for roi target status
+rospy.Subscriber('/roi_status_flag', Bool, roi_status_callback)
+
+# ROS service servers
+rospy.Service('initialize_servos', Empty, initialize_servos_service)
+rospy.Service('zero_servos', Empty, zero_servos_service)
+
+# Keep the node running
+rospy.spin()
+
+# Cleanup pigpio and shut down GPIO on shutdown
+def shutdown_handler():
+    rospy.loginfo("Shutting down servo controller...")
+    stop_servo(PD1)
+    stop_servo(PD2)
+    stop_servo(PD34)
+    pi.stop()  # Cleanup pigpio
+
+rospy.on_shutdown(shutdown_handler)

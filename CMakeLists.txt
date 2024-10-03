@@ -35,6 +35,6 @@ include_directories(
 catkin_install_python(PROGRAMS
 	scripts/ROSI2.py
   scripts/Payload_Publisher_Test.py
-  scripts/Payload_Deployment.py
+  scripts/ROSI3.py
 	DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
