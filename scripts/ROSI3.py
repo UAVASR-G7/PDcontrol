@@ -47,7 +47,7 @@ def stop_servo(pin):
 def zero_servo_position(pin, zero_angle):
     rospy.loginfo(f"Zeroing servo on pin {pin} to {zero_angle} degrees")
     set_servo_position(pin, zero_angle)  # Set servo back to the specified zero angle
-    Timer(0.25, stop_servo, [pin]).start()  # Stop the servo after 0.25 seconds
+    Timer(0.2, stop_servo, [pin]).start()  # Stop the servo after 0.25 seconds
 
 # Dictionary to store deployment angles
 deploy_angles = {PD1: 90 - 50, PD2: 90 + 60, 'drone': 90 + 20, 'phone': 90 - 40}
