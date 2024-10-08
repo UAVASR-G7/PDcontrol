@@ -20,7 +20,7 @@ def simulated_publisher():
     while not rospy.is_shutdown():
         # Loop through each target in the list
         for target in targets:
-            rospy.sleep(5)
+            rospy.sleep(2)
             # Create and populate a TargetLocalisation message
             target_msg = TargetLocalisation()
             target_msg.target_label = target
@@ -29,22 +29,19 @@ def simulated_publisher():
             rospy.loginfo(f"Publishing target: {target}")
             pub_target.publish(target_msg)
             
-            # Wait a moment before setting the flag
-            rospy.sleep(1)
-            
             # Publish the ROI status flag as True to simulate detection
             rospy.loginfo(f"Setting ROI status flag to True for {target}")
             pub_roi_flag.publish(Bool(data=True))  # Set flag to True
             
             # Wait for the payload drop to complete
-            rospy.sleep(5)  # Adjust time based on servo action timing
+            rospy.sleep(2)  # Adjust time based on servo action timing
             
             # Reset the ROI status flag by publishing False
             rospy.loginfo("Resetting ROI status flag to False after drop")
             pub_roi_flag.publish(Bool(data=False))
             
             # Wait before the next cycle
-            rospy.sleep(10)  # Wait for a short period before publishing the next target
+            rospy.sleep(2)  # Wait for a short period before publishing the next target
 
 if __name__ == '__main__':
     try:
