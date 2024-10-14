@@ -50,7 +50,7 @@ def zero_servo_position(pin, zero_angle):
     Timer(0.2, stop_servo, [pin]).start()  # Stop the servo after 0.25 seconds
 
 # Dictionary to store deployment angles
-deploy_angles = {PD1: 90 - 50, PD2: 90 + 60, 'drone': 90 + 20, 'phone': 90 - 42}
+deploy_angles = {PD1: 90 - 50, PD2: 90 + 80, 'drone': 90 + 20, 'phone': 90 - 48}
 
 # Zero positions for each servo
 zero_angles = {PD1: 90, PD2: 90, PD34: 90}
